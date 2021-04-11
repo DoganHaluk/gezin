@@ -2,7 +2,10 @@ package be.vdab.repositories;
 
 import be.vdab.domain.Gezin;
 import be.vdab.dto.PersoonMetPapaEnMama;
+import be.vdab.exceptions.PersoonNietGevondenException;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -49,6 +52,70 @@ public class PersoonRepository extends AbstractRepository{
             var result = statement.executeQuery();
             return result.next() ? Optional.of(new PersoonMetPapaEnMama(result.getString("voornaam"), result.getString("papaVoornaam"), result.getString("mamaVoornaam")))
                     :Optional.empty();
+        }
+    }
+
+    public void eenPersoonOverlijdt(int id) throws SQLException{
+        try (var connection = super.getConnection()) {
+            connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+            connection.setAutoCommit(false);
+            var optionalVermogen = findVermogen(id, connection);
+            if (optionalVermogen.isPresent()) {
+                var vermogen = optionalVermogen.get();
+                if (vermogen.compareTo(BigDecimal.ZERO) > 0) {
+                    var aantalKinderen = findAantalKinderen(id, connection);
+                    if (aantalKinderen != 0) {
+                        var erfenisPerKind = vermogen.divide(BigDecimal.valueOf(aantalKinderen), 2, RoundingMode.HALF_UP);
+                        verHoogVermogenMetErfenis(id, connection, erfenisPerKind);
+                    }
+                    zetVermogenOpNul(id, connection);
+                }
+                connection.commit();
+                return;
+            }
+            connection.rollback();
+            throw new PersoonNietGevondenException();
+        }
+    }
+
+    private Optional<BigDecimal> findVermogen(long id, Connection connection) throws SQLException {
+        try (var statement = connection.prepareStatement(
+                "select vermogen from personen where id = ? for update")) {
+            statement.setLong(1, id);
+            var result = statement.executeQuery();
+            if (result.next()) {
+                return Optional.of(result.getBigDecimal("vermogen"));
+            }
+            return Optional.empty();
+        }
+    }
+
+    private void zetVermogenOpNul(long id,Connection connection) throws SQLException {
+        try (var statement = connection.prepareStatement(
+                "update personen set vermogen= 0 where id = ?")) {
+            statement.setLong(1, id);
+            statement.executeUpdate();
+        }
+    }
+
+    private int findAantalKinderen(long id,Connection connection) throws SQLException{
+        var sql = "select count(*) as aantalKinderen from personen where papaid=? or mamaid=?";
+        try (var statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, id);
+            statement.setLong(2, id);
+            var result = statement.executeQuery();
+            result.next();
+            return result.getInt("aantalKinderen");
+        }
+    }
+
+    private void verHoogVermogenMetErfenis(long id, Connection connection, BigDecimal erfenis) throws SQLException {
+        var sql = "update personen set vermogen = vermogen + ? where papaid = ? or mamaid = ?";
+        try (var statement = connection.prepareStatement(sql)) {
+            statement.setBigDecimal(1, erfenis);
+            statement.setLong(2, id);
+            statement.setLong(3, id);
+            statement.executeUpdate();
         }
     }
 }

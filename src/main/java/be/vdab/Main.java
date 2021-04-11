@@ -2,6 +2,7 @@ package be.vdab;
 
 import be.vdab.domain.Gezin;
 import be.vdab.dto.PersoonMetPapaEnMama;
+import be.vdab.exceptions.PersoonNietGevondenException;
 import be.vdab.repositories.PersoonRepository;
 
 import java.sql.SQLException;
@@ -19,9 +20,9 @@ public class Main {
         for (String kind; !"STOP".equals((kind = scanner.nextLine())); ) {
             gezin.addKind(kind);
         }
-        var repository = new PersoonRepository();
+        var repository1 = new PersoonRepository();
         try {
-            repository.creerEenGezin(gezin);
+            repository1.creerEenGezin(gezin);
         } catch (SQLException ex) {
             ex.printStackTrace(System.err);
         }
@@ -32,6 +33,17 @@ public class Main {
         try {
             repository2.vindEenPersoonDoorId(id).ifPresentOrElse(persoonMetPapaEnMama -> toon(persoonMetPapaEnMama), () -> System.out.println("Niet gevonden"));
         } catch (SQLException ex) {
+            ex.printStackTrace(System.err);
+        }
+
+        System.out.print("PersoonId die overlijdt: ");
+        var persoonId = scanner.nextInt();
+        var repository3 = new PersoonRepository();
+        try {
+            repository3.eenPersoonOverlijdt(persoonId);
+        } catch (PersoonNietGevondenException ex){
+            System.out.println("Niet gevonden.");
+        } catch (SQLException ex){
             ex.printStackTrace(System.err);
         }
     }
