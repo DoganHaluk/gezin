@@ -1,10 +1,12 @@
 package be.vdab.repositories;
 
 import be.vdab.domain.Gezin;
+import be.vdab.dto.PersoonMetPapaEnMama;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Optional;
 
 public class PersoonRepository extends AbstractRepository{
     public void creerEenGezin(Gezin gezin) throws SQLException{
@@ -34,6 +36,19 @@ public class PersoonRepository extends AbstractRepository{
                 statementKind.executeBatch();
             }
             connection.commit();
+        }
+    }
+
+    public Optional<PersoonMetPapaEnMama> vindEenPersoonDoorId(int id) throws SQLException{
+        var sql = "SELECT p1.voornaam AS voornaam, p2.voornaam AS papaVoornaam, p3.voornaam AS mamaVoornaam FROM personen p1 LEFT OUTER JOIN personen p2 ON p1.papaId = p2.id LEFT OUTER JOIN personen p3 ON p1.mamaId = p3.id WHERE p1.id = ?";
+        try (var connection = super.getConnection();
+             var statement = connection.prepareStatement(sql)){
+            connection.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+            connection.setAutoCommit(false);
+            statement.setInt(1, id);
+            var result = statement.executeQuery();
+            return result.next() ? Optional.of(new PersoonMetPapaEnMama(result.getString("voornaam"), result.getString("papaVoornaam"), result.getString("mamaVoornaam")))
+                    :Optional.empty();
         }
     }
 }

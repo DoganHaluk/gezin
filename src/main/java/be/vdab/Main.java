@@ -1,6 +1,7 @@
 package be.vdab;
 
 import be.vdab.domain.Gezin;
+import be.vdab.dto.PersoonMetPapaEnMama;
 import be.vdab.repositories.PersoonRepository;
 
 import java.sql.SQLException;
@@ -15,7 +16,7 @@ public class Main {
         var mama = scanner.nextLine();
         var gezin = new Gezin(papa, mama);
         System.out.println("Kinderen (typ STOP om te stoppen):");
-        for (String kind; ! "STOP".equals((kind = scanner.nextLine()));) {
+        for (String kind; !"STOP".equals((kind = scanner.nextLine())); ) {
             gezin.addKind(kind);
         }
         var repository = new PersoonRepository();
@@ -24,5 +25,20 @@ public class Main {
         } catch (SQLException ex) {
             ex.printStackTrace(System.err);
         }
+
+        System.out.print("PersoonId: ");
+        var id = scanner.nextInt();
+        var repository2 = new PersoonRepository();
+        try {
+            repository2.vindEenPersoonDoorId(id).ifPresentOrElse(persoonMetPapaEnMama -> toon(persoonMetPapaEnMama), () -> System.out.println("Niet gevonden"));
+        } catch (SQLException ex) {
+            ex.printStackTrace(System.err);
+        }
+    }
+
+    private static void toon(PersoonMetPapaEnMama persoonMetPapaEnMama) {
+        System.out.println(persoonMetPapaEnMama.getVoornaam());
+        persoonMetPapaEnMama.getVoornaamPapa().ifPresent(voornaamPapa -> System.out.println("papa: " + voornaamPapa));
+        persoonMetPapaEnMama.getVoornaamMama().ifPresent(voornaamMama -> System.out.println("mama: " + voornaamMama));
     }
 }
