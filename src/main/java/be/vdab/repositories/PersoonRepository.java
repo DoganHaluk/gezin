@@ -17,7 +17,7 @@ public class PersoonRepository extends AbstractRepository{
         var insertKind = "INSERT INTO personen(voornaam,papaId,mamaId) VALUES (?,?,?)";
         try (var connection = super.getConnection();
              var statementOuder = connection.prepareStatement(insertOuder, PreparedStatement.RETURN_GENERATED_KEYS)){
-            connection.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+            connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
             connection.setAutoCommit(false);
             statementOuder.setString(1, gezin.getPapa());
             statementOuder.addBatch();
